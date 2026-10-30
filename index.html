@@ -3,14 +3,15 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="theme-color" content="#111827">
-<title>PhotoLink Chat</title>
+<meta name="theme-color" content="#101827">
+<title>PhotoLink Chat — Sahinur Islam</title>
 <style>
 :root{color-scheme:dark;--bg:#0b1220;--panel:#111b2e;--line:#26344b;--accent:#4f8cff;--muted:#9aa9c0}
 *{box-sizing:border-box}body{margin:0;font-family:system-ui,-apple-system,"Noto Sans Bengali",sans-serif;background:var(--bg);color:#eef4ff;min-height:100vh;display:flex;justify-content:center}
 .app{width:100%;max-width:760px;min-height:100vh;display:flex;flex-direction:column;background:linear-gradient(180deg,#101a2b,#0b1220)}
-header{padding:18px 20px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:12px;position:sticky;top:0;background:#101a2bf2;backdrop-filter:blur(12px);z-index:2}
-.logo{width:42px;height:42px;border-radius:14px;background:linear-gradient(135deg,#4f8cff,#8b5cf6);display:grid;place-items:center;font-size:22px}
+header{padding:16px 18px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:12px;position:sticky;top:0;background:#101a2bf2;backdrop-filter:blur(12px);z-index:2}
+.logo-wrap{width:52px;height:52px;border-radius:50%;padding:2px;background:linear-gradient(135deg,#38bdf8,#6366f1);flex:none}
+.logo-wrap img{width:100%;height:100%;object-fit:cover;object-position:center 25%;border-radius:50%;display:block}
 h1{font-size:18px;margin:0}header p{margin:3px 0 0;color:var(--muted);font-size:12px}
 main{padding:22px 16px;flex:1;display:flex;flex-direction:column;gap:18px}
 .intro{max-width:520px;background:#162238;border:1px solid var(--line);padding:16px;border-radius:18px 18px 18px 5px;line-height:1.65;font-size:14px}
@@ -30,13 +31,17 @@ button{font:inherit;border:0;border-radius:12px;padding:12px 16px;cursor:pointer
 .result h3{margin:0 0 8px;font-size:14px;color:#9ef0c5}
 .url{display:block;overflow-wrap:anywhere;color:#b6d3ff;font-size:12px;line-height:1.5;margin-bottom:12px}
 .actions{display:flex;gap:8px}.actions button{flex:1;font-size:13px;padding:10px}
-footer{border-top:1px solid var(--line);padding:13px;text-align:center;color:#71819a;font-size:11px}
+footer{border-top:1px solid var(--line);padding:16px 12px;text-align:center;color:#8ea0bb;font-size:12px;line-height:1.7}
+.credit{color:#dce8ff;font-weight:650}.credit span{color:#38bdf8}
 @media(min-width:600px){main{padding:28px}.upload-card{padding:22px}}
 </style>
 </head>
 <body>
 <div class="app">
-<header><div class="logo">📷</div><div><h1>PhotoLink Chat</h1><p>ছবি কমপ্রেস করুন, লিংক তৈরি করুন</p></div></header>
+<header>
+  <div class="logo-wrap"><img src="./sahinur-islam.jpg" alt="Sahinur Islam" onerror="this.style.display='none';this.parentElement.textContent='SI';this.parentElement.style.display='grid';this.parentElement.style.placeItems='center';this.parentElement.style.fontWeight='800'"></div>
+  <div><h1>PhotoLink Chat</h1><p>ছবি কমপ্রেস করুন, লিংক তৈরি করুন</p></div>
+</header>
 <main>
 <div class="intro">স্বাগতম! এখানে শুধু ছবি আপলোড করা যাবে। ছবি নির্বাচন করলে সেটি আপনার ব্রাউজারেই কমপ্রেস হবে, তারপর Cloudinary-তে আপলোড করে শেয়ার করার লিংক তৈরি হবে।<div class="note">সতর্কতা: লিংকটি যার কাছে থাকবে, সে ছবিটি দেখতে পারে। সংবেদনশীল ছবি আপলোড করবেন না।</div></div>
 <section class="upload-card">
@@ -49,72 +54,37 @@ footer{border-top:1px solid var(--line);padding:13px;text-align:center;color:#71
 <div class="result" id="result"><h3>✓ আপনার ছবির লিংক তৈরি হয়েছে</h3><a class="url" id="url" href="#" target="_blank" rel="noopener"></a><div class="actions"><button class="secondary" id="copy">লিংক কপি</button><button class="secondary" id="open">ছবি খুলুন</button></div></div>
 </section>
 </main>
-<footer>PhotoLink Chat • ছবি কমপ্রেশন ও শেয়ার লিংক</footer>
+<footer>
+  <div class="credit">Designed &amp; Developed by <span>Sahinur Islam</span></div>
+  <div>PhotoLink Chat · Image compression &amp; sharing</div>
+</footer>
 </div>
 <script>
-// Cloudinary setup configured from the user's dashboard screenshot.
 const CLOUD_NAME = "tdsc7x7e";
 const UPLOAD_PRESET = "photolink";
-
-const photoInput = document.getElementById('photo');
-const uploadBtn = document.getElementById('upload');
-const preview = document.getElementById('preview');
-const thumb = document.getElementById('thumb');
-const statusBox = document.getElementById('status');
-const resultBox = document.getElementById('result');
-let selectedFile = null, compressedBlob = null, outputUrl = '';
-
-function humanSize(n){return n < 1024*1024 ? (n/1024).toFixed(0)+' KB' : (n/1024/1024).toFixed(2)+' MB';}
-function showStatus(text){statusBox.style.display='block';statusBox.textContent=text;}
-function hideResult(){resultBox.style.display='none';outputUrl='';}
-
-photoInput.addEventListener('change', async () => {
-  const file = photoInput.files && photoInput.files[0];
-  if(!file) return;
-  if(!file.type.startsWith('image/')) { showStatus('অনুগ্রহ করে একটি ছবি নির্বাচন করুন।'); return; }
-  if(file.size > 20*1024*1024) { showStatus('ছবিটি ২০ MB-এর বেশি। ছোট ছবি নির্বাচন করুন।'); return; }
-  selectedFile = file; compressedBlob = null; hideResult();
-  thumb.src = URL.createObjectURL(file);
-  document.getElementById('filename').textContent = file.name;
-  document.getElementById('filesize').textContent = 'মূল সাইজ: '+humanSize(file.size);
-  document.getElementById('compressed').textContent = 'কমপ্রেস করা হচ্ছে…';
-  preview.style.display='flex'; uploadBtn.disabled=true; showStatus('ছবিটি কমপ্রেস করা হচ্ছে…');
-  try{
-    const img = new Image(); img.src = URL.createObjectURL(file); await img.decode();
-    const maxSide = 1920, scale = Math.min(1, maxSide / Math.max(img.naturalWidth, img.naturalHeight));
-    const canvas = document.createElement('canvas');
-    canvas.width = Math.max(1, Math.round(img.naturalWidth*scale)); canvas.height = Math.max(1, Math.round(img.naturalHeight*scale));
-    canvas.getContext('2d').drawImage(img,0,0,canvas.width,canvas.height);
-    compressedBlob = await new Promise(resolve => canvas.toBlob(resolve,'image/jpeg',0.78));
-    if(!compressedBlob) throw new Error('কমপ্রেশন করা যায়নি');
-    document.getElementById('compressed').textContent = 'কমপ্রেসড সাইজ: '+humanSize(compressedBlob.size);
-    uploadBtn.disabled=false; showStatus('ছবি প্রস্তুত। এখন বোতামে চাপ দিয়ে লিংক তৈরি করুন।');
-  }catch(e){showStatus('ছবি প্রসেস করা যায়নি। অন্য ছবি চেষ্টা করুন।');}
+const photoInput=document.getElementById('photo'), uploadBtn=document.getElementById('upload'), preview=document.getElementById('preview'), thumb=document.getElementById('thumb'), statusBox=document.getElementById('status'), resultBox=document.getElementById('result');
+let selectedFile=null, compressedBlob=null, outputUrl='';
+function humanSize(n){return n<1048576?(n/1024).toFixed(0)+' KB':(n/1048576).toFixed(2)+' MB'}
+function showStatus(t){statusBox.style.display='block';statusBox.textContent=t}
+function hideResult(){resultBox.style.display='none';outputUrl=''}
+photoInput.addEventListener('change',async()=>{
+ const file=photoInput.files&&photoInput.files[0];if(!file)return;
+ if(!file.type.startsWith('image/')){showStatus('অনুগ্রহ করে একটি ছবি নির্বাচন করুন।');return}
+ if(file.size>20*1024*1024){showStatus('ছবিটি ২০ MB-এর বেশি। ছোট ছবি নির্বাচন করুন।');return}
+ selectedFile=file;compressedBlob=null;hideResult();thumb.src=URL.createObjectURL(file);
+ document.getElementById('filename').textContent=file.name;document.getElementById('filesize').textContent='মূল সাইজ: '+humanSize(file.size);
+ document.getElementById('compressed').textContent='কমপ্রেস করা হচ্ছে…';preview.style.display='flex';uploadBtn.disabled=true;showStatus('ছবিটি কমপ্রেস করা হচ্ছে…');
+ try{const img=new Image();img.src=URL.createObjectURL(file);await img.decode();const scale=Math.min(1,1920/Math.max(img.naturalWidth,img.naturalHeight));const c=document.createElement('canvas');c.width=Math.max(1,Math.round(img.naturalWidth*scale));c.height=Math.max(1,Math.round(img.naturalHeight*scale));c.getContext('2d').drawImage(img,0,0,c.width,c.height);compressedBlob=await new Promise(r=>c.toBlob(r,'image/jpeg',.78));if(!compressedBlob)throw Error();document.getElementById('compressed').textContent='কমপ্রেসড সাইজ: '+humanSize(compressedBlob.size);uploadBtn.disabled=false;showStatus('ছবি প্রস্তুত। এখন বোতামে চাপ দিয়ে লিংক তৈরি করুন।')}
+ catch(e){showStatus('ছবি প্রসেস করা যায়নি। অন্য ছবি চেষ্টা করুন।')}
 });
-
-uploadBtn.addEventListener('click', async () => {
-  if(!selectedFile || !compressedBlob) return;
-  uploadBtn.disabled=true; uploadBtn.textContent='আপলোড হচ্ছে…'; hideResult();
-  showStatus('কমপ্রেস করা ছবি Cloudinary-তে আপলোড হচ্ছে…');
-  try{
-    const form = new FormData();
-    form.append('file', compressedBlob, 'photolink-'+Date.now()+'.jpg');
-    form.append('upload_preset', UPLOAD_PRESET);
-    const response = await fetch(`https://api.cloudinary.com/v1_1/${encodeURIComponent(CLOUD_NAME)}/image/upload`,{method:'POST',body:form});
-    const data = await response.json();
-    if(!response.ok) throw new Error(data.error?.message || 'আপলোড ব্যর্থ হয়েছে');
-    outputUrl = data.secure_url;
-    const urlEl = document.getElementById('url'); urlEl.href=outputUrl; urlEl.textContent=outputUrl;
-    resultBox.style.display='block'; showStatus('সফল! আপনার ছবির লিংক তৈরি হয়েছে।');
-  }catch(e){showStatus('আপলোড ব্যর্থ: '+e.message+'. Cloud Name, preset-এর নাম এবং Unsigned mode যাচাই করুন।');}
-  finally{uploadBtn.disabled=false; uploadBtn.textContent='কমপ্রেস করে লিংক তৈরি করুন';}
+uploadBtn.addEventListener('click',async()=>{
+ if(!selectedFile||!compressedBlob)return;uploadBtn.disabled=true;uploadBtn.textContent='আপলোড হচ্ছে…';hideResult();showStatus('কমপ্রেস করা ছবি Cloudinary-তে আপলোড হচ্ছে…');
+ try{const f=new FormData();f.append('file',compressedBlob,'photolink-'+Date.now()+'.jpg');f.append('upload_preset',UPLOAD_PRESET);const res=await fetch(`https://api.cloudinary.com/v1_1/${encodeURIComponent(CLOUD_NAME)}/image/upload`,{method:'POST',body:f});const data=await res.json();if(!res.ok)throw Error(data.error?.message||'আপলোড ব্যর্থ হয়েছে');outputUrl=data.secure_url;const a=document.getElementById('url');a.href=outputUrl;a.textContent=outputUrl;resultBox.style.display='block';showStatus('সফল! আপনার ছবির লিংক তৈরি হয়েছে।')}
+ catch(e){showStatus('আপলোড ব্যর্থ: '+e.message+'. Cloud Name, preset-এর নাম এবং Unsigned mode যাচাই করুন।')}
+ finally{uploadBtn.disabled=false;uploadBtn.textContent='কমপ্রেস করে লিংক তৈরি করুন'}
 });
-document.getElementById('copy').addEventListener('click', async()=>{
-  if(!outputUrl) return;
-  try{await navigator.clipboard.writeText(outputUrl);showStatus('লিংক কপি হয়েছে। এখন শেয়ার করতে পারো।');}
-  catch(e){const t=document.createElement('textarea');t.value=outputUrl;document.body.appendChild(t);t.select();document.execCommand('copy');t.remove();showStatus('লিংক কপি হয়েছে।');}
-});
-document.getElementById('open').addEventListener('click',()=>{if(outputUrl)window.open(outputUrl,'_blank','noopener');});
+document.getElementById('copy').addEventListener('click',async()=>{if(!outputUrl)return;try{await navigator.clipboard.writeText(outputUrl);showStatus('লিংক কপি হয়েছে। এখন শেয়ার করতে পারো।')}catch(e){const t=document.createElement('textarea');t.value=outputUrl;document.body.appendChild(t);t.select();document.execCommand('copy');t.remove();showStatus('লিংক কপি হয়েছে।')}});
+document.getElementById('open').addEventListener('click',()=>{if(outputUrl)window.open(outputUrl,'_blank','noopener')});
 </script>
 </body>
 </html>
